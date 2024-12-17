@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 
 	"github.com/asim/go-micro/v3/util/file"
 	capi "github.com/hashicorp/consul/api"
@@ -66,6 +67,19 @@ func Decrypt(v any) (any, error) {
 		return v, err
 	}
 	return decoded, nil
+}
+
+func DecryptInplace(v any) error {
+	decoded, err := Decrypt(v)
+	if err != nil {
+		return err
+	}
+	if reflect.TypeOf(v).Kind() == reflect.Ptr {
+		reflect.ValueOf(v).Elem().Set(reflect.ValueOf(decoded).Elem())
+		return nil
+	}
+	reflect.ValueOf(v).Set(reflect.ValueOf(decoded))
+	return nil
 }
 
 func SecurityLoad[T any](path string, opts ...conf.Option) (T, error) {

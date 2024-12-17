@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/consul"
+	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -90,6 +91,22 @@ func TestConsul(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, exists)
 	content, err := os.ReadFile(c.Test.Encrypted4)
+	require.NoError(t, err)
+	require.Equal(t, `value3`, string(content))
+
+	c = Test{}
+	err = conf.LoadConfigFromYamlBytes([]byte(expected), &c)
+	require.NoError(t, err)
+	err = confz.DecryptInplace(&c)
+	require.NoError(t, err)
+
+	require.Equal(t, "World", c.Test.Hello)
+	require.Equal(t, "value1", c.Test.Encrypted2)
+	require.Equal(t, "value2", c.Test.Encrypted3)
+	exists, err = confz.FileExists(c.Test.Encrypted4)
+	require.NoError(t, err)
+	require.True(t, exists)
+	content, err = os.ReadFile(c.Test.Encrypted4)
 	require.NoError(t, err)
 	require.Equal(t, `value3`, string(content))
 }
