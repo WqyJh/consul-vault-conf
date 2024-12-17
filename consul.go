@@ -58,15 +58,23 @@ func Load[T any](path string, opts ...conf.Option) (T, error) {
 	return v, nil
 }
 
+func Decrypt(v any) (any, error) {
+	secretFetcher := NewLazyVaultSecretFetcher()
+	encDecoder := NewDefaultEncDecoder()
+	decoded, err := Decode(v, secretFetcher, encDecoder)
+	if err != nil {
+		return v, err
+	}
+	return decoded, nil
+}
+
 func SecurityLoad[T any](path string, opts ...conf.Option) (T, error) {
 	v, err := Load[T](path, opts...)
 	if err != nil {
 		return v, err
 	}
 
-	secretFetcher := NewLazyVaultSecretFetcher()
-	encDecoder := NewDefaultEncDecoder()
-	decoded, err := Decode(v, secretFetcher, encDecoder)
+	decoded, err := Decrypt(v)
 	if err != nil {
 		return v, err
 	}

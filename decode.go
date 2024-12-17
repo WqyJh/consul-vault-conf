@@ -19,7 +19,7 @@ type vaultDecoder struct {
 }
 
 // Decode decrypts the encrypted string fields start with `ENC~` in fields tree of obj and returns the decrypted obj.
-func Decode(obj interface{}, secretFetcher SecretFetcher, encDecoder SecretFetcher) (interface{}, error) {
+func Decode(obj any, secretFetcher SecretFetcher, encDecoder SecretFetcher) (any, error) {
 	d := vaultDecoder{
 		ctx:           context.Background(),
 		secretFetcher: secretFetcher,
@@ -28,7 +28,7 @@ func Decode(obj interface{}, secretFetcher SecretFetcher, encDecoder SecretFetch
 	return d.decode(obj)
 }
 
-func (d *vaultDecoder) decode(obj interface{}) (interface{}, error) {
+func (d *vaultDecoder) decode(obj any) (any, error) {
 	// Wrap the src in a reflect.Value
 	src := reflect.ValueOf(obj)
 
