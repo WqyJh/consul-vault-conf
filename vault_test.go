@@ -2,18 +2,13 @@ package confz_test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
 	confz "github.com/WqyJh/consul-vault-conf"
-	"github.com/docker/go-connections/nat"
-	"github.com/google/uuid"
-	"github.com/hashicorp/vault-client-go"
+	"github.com/WqyJh/consul-vault-conf/test"
 	"github.com/hashicorp/vault-client-go/schema"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	vaultcontainer "github.com/testcontainers/testcontainers-go/modules/vault"
 )
 
 type VaultConfig struct {
@@ -39,33 +34,55 @@ type Conf struct {
 
 func TestVault(t *testing.T) {
 	ctx := context.Background()
-	vaultContainer, rootToken, err := setupVaultContainer(ctx)
-	require.NoError(t, err)
-	defer testcontainers.TerminateContainer(vaultContainer)
 
-	vaultConfig := bootstrapVault(t, vaultContainer, rootToken, VaultPair{
-		Key: "unittest/encrypted",
-		Value: schema.KvV2WriteRequest{
-			Data: map[string]interface{}{
-				"key1": "value1",
-				"key2": "value2",
+	vaultContainer, err := test.SetupVaultServer(ctx, test.VaultConfig{
+		Policies: []test.VaultPolicy{
+			{
+				Name: "unittest-read",
+				Policy: schema.PoliciesWriteAclPolicyRequest{
+					Policy: `path "kv/data/unittest/*" {
+						policy = "read"
+					}`,
+				},
 			},
 		},
-	}, VaultPair{
-		Key: "unittest/encrypted2",
-		Value: schema.KvV2WriteRequest{
-			Data: map[string]interface{}{
-				"key1": "value3",
+		AppRoles: []test.VaultAppRole{
+			{
+				Name: "unittest",
+				TokenRules: schema.AppRoleWriteRoleRequest{
+					TokenPolicies: []string{"unittest-read"},
+				},
 			},
 		},
-		Meta: &schema.KvV2WriteMetadataRequest{
-			CustomMetadata: map[string]interface{}{
-				"key1": "is-file",
+		Pairs: []test.VaultPair{
+			{
+				MountPath: "kv",
+				Key:       "unittest/encrypted",
+				Value: schema.KvV2WriteRequest{
+					Data: map[string]interface{}{
+						"key1": "value1",
+						"key2": "value2",
+					},
+				},
+			},
+			{
+				MountPath: "kv",
+				Key:       "unittest/encrypted2",
+				Value: schema.KvV2WriteRequest{
+					Data: map[string]interface{}{
+						"key1": "value3",
+					},
+				},
+				Meta: &schema.KvV2WriteMetadataRequest{
+					CustomMetadata: map[string]interface{}{
+						"key1": "is-file",
+					},
+				},
 			},
 		},
 	})
-
-	t.Logf("vaultConfig: %+v", vaultConfig)
+	require.NoError(t, err)
+	defer vaultContainer.Stop()
 
 	c := Conf{
 		Hello:      "World",
@@ -75,10 +92,11 @@ func TestVault(t *testing.T) {
 		Encrypted4: "SEC~kv/unittest/encrypted2/key1",
 	}
 
+	role := vaultContainer.AppRoleTokens["unittest"]
 	vaultClient, err := confz.NewAppRoleVaultClient(
-		vaultConfig.VaultAddr,
-		vaultConfig.VaultRoleId,
-		vaultConfig.VaultSecretId,
+		vaultContainer.VaultAddr,
+		role.RoleId,
+		role.SecretId,
 	)
 	require.NoError(t, err)
 
@@ -101,64 +119,4 @@ func TestVault(t *testing.T) {
 
 	t.Logf("conf: %+v", c)
 	t.Logf("decoded: %+v", decodedConf)
-}
-
-func setupVaultContainer(ctx context.Context) (testcontainers.Container, string, error) {
-	vaultRootToken := uuid.New().String()
-	vaultContainer, err := vaultcontainer.Run(ctx, "hashicorp/vault:1.18.1", vaultcontainer.WithToken(vaultRootToken), vaultcontainer.WithInitCommand(
-		"auth enable approle",
-		"secrets disable secret",
-		"secrets enable -path kv -version=2 kv",
-	))
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to start vault container: %s", err)
-	}
-	return vaultContainer, vaultRootToken, nil
-}
-
-func bootstrapVault(t *testing.T, container testcontainers.Container, rootToken string, pairs ...VaultPair) VaultConfig {
-	ctx := context.Background()
-	vaultAddr, err := container.PortEndpoint(ctx, nat.Port("8200"), "http")
-	require.NoError(t, err)
-
-	client, err := vault.New(vault.WithAddress(vaultAddr))
-	require.NoError(t, err)
-
-	err = client.SetToken(rootToken)
-	require.NoError(t, err)
-
-	_, err = client.System.PoliciesWriteAclPolicy(ctx, "unittest-read", schema.PoliciesWriteAclPolicyRequest{
-		Policy: `path "kv/data/unittest/*" {
-			policy = "read"
-		}`,
-	})
-	require.NoError(t, err)
-
-	_, err = client.Auth.AppRoleWriteRole(ctx, "unittest", schema.AppRoleWriteRoleRequest{
-		TokenPolicies: []string{"unittest-read"},
-	})
-	require.NoError(t, err)
-
-	roleId, err := client.Auth.AppRoleReadRoleId(ctx, "unittest")
-	require.NoError(t, err)
-
-	secretId, err := client.Auth.AppRoleWriteSecretId(ctx, "unittest", schema.AppRoleWriteSecretIdRequest{})
-	require.NoError(t, err)
-
-	for _, pair := range pairs {
-		_, err = client.Secrets.KvV2Write(ctx, pair.Key, pair.Value, vault.WithMountPath("kv"))
-		require.NoError(t, err)
-
-		if pair.Meta != nil {
-			_, err = client.Secrets.KvV2WriteMetadata(ctx, pair.Key, *pair.Meta, vault.WithMountPath("kv"))
-			require.NoError(t, err)
-		}
-	}
-
-	return VaultConfig{
-		VaultAddr:      vaultAddr,
-		VaultRootToken: rootToken,
-		VaultRoleId:    roleId.Data.RoleId,
-		VaultSecretId:  secretId.Data.SecretId,
-	}
 }
