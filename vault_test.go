@@ -14,8 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	vaultcontainer "github.com/testcontainers/testcontainers-go/modules/vault"
-	"github.com/zeromicro/go-zero/core/conf"
-	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type VaultConfig struct {
@@ -40,12 +38,6 @@ type Conf struct {
 }
 
 func TestVault(t *testing.T) {
-	data := `Hello: World
-Encrypted: ENC~b2/w1Q5OzFI3RdVK28dntMc5gUoIJ2TKZMLf0GfrIOBYjFcPTWh7EAukti0bUQ==
-Encrypted2: SEC~kv/unittest/encrypted/key1
-Encrypted3: SEC~kv/unittest/encrypted/key2
-Encrypted4: SEC~kv/unittest/encrypted2/key1`
-
 	ctx := context.Background()
 	vaultContainer, rootToken, err := setupVaultContainer(ctx)
 	require.NoError(t, err)
@@ -73,11 +65,15 @@ Encrypted4: SEC~kv/unittest/encrypted2/key1`
 		},
 	})
 
-	logx.Infow("vaultConfig", logx.Field("vaultConfig", vaultConfig))
+	t.Logf("vaultConfig: %+v", vaultConfig)
 
-	var c Conf
-	err = conf.LoadConfigFromYamlBytes([]byte(data), &c)
-	require.NoError(t, err)
+	c := Conf{
+		Hello:      "World",
+		Encrypted:  "ENC~b2/w1Q5OzFI3RdVK28dntMc5gUoIJ2TKZMLf0GfrIOBYjFcPTWh7EAukti0bUQ==",
+		Encrypted2: "SEC~kv/unittest/encrypted/key1",
+		Encrypted3: "SEC~kv/unittest/encrypted/key2",
+		Encrypted4: "SEC~kv/unittest/encrypted2/key1",
+	}
 
 	vaultClient, err := confz.NewAppRoleVaultClient(
 		vaultConfig.VaultAddr,
@@ -103,7 +99,8 @@ Encrypted4: SEC~kv/unittest/encrypted2/key1`
 	require.NoError(t, err)
 	require.Equal(t, `value3`, string(content))
 
-	logx.Infow("conf", logx.Field("conf", c), logx.Field("decoded", decodedConf))
+	t.Logf("conf: %+v", c)
+	t.Logf("decoded: %+v", decodedConf)
 }
 
 func setupVaultContainer(ctx context.Context) (testcontainers.Container, string, error) {

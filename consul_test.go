@@ -14,8 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/consul"
-	"github.com/zeromicro/go-zero/core/conf"
-	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type ConsulConfig struct {
@@ -42,7 +40,7 @@ func TestConsul(t *testing.T) {
 		Value: []byte(expected),
 	})
 
-	logx.Infow("consulConfig", logx.Field("consulConfig", consulConfig))
+	t.Logf("consulConfig: %+v", consulConfig)
 
 	vaultContainer, vaultToken, err := setupVaultContainer(ctx)
 	require.NoError(t, err)
@@ -70,36 +68,57 @@ func TestConsul(t *testing.T) {
 		},
 	})
 
-	logx.Infow("vaultConfig", logx.Field("vaultConfig", vaultConfig))
-
-	type Test struct {
-		Test Conf
-	}
+	t.Logf("vaultConfig: %+v", vaultConfig)
 
 	os.Setenv("CONSUL_ADDR", consulConfig.ConsulAddr)
 	os.Setenv("CONSUL_TOKEN", consulConfig.ConsulToken)
 	os.Setenv("VAULT_ADDR", vaultConfig.VaultAddr)
 	os.Setenv("VAULT_ROLE_ID", vaultConfig.VaultRoleId)
 	os.Setenv("VAULT_SECRET_ID", vaultConfig.VaultSecretId)
-	c := confz.SecurityMustLoad[Test]("unittest/config.yaml")
-	logx.Infow("c", logx.Field("c", c))
 
-	require.Equal(t, "World", c.Test.Hello)
-	require.Equal(t, "value1", c.Test.Encrypted2)
-	require.Equal(t, "value2", c.Test.Encrypted3)
-	exists, err := confz.FileExists(c.Test.Encrypted4)
+	content, err := confz.ConsulGet("unittest/config.yaml")
+	require.NoError(t, err)
+	require.Equal(t, expected, string(content))
+
+	type Test struct {
+		Test Conf
+	}
+
+	c := Test{
+		Test: Conf{
+			Hello:      "World",
+			Encrypted:  "ENC~b2/w1Q5OzFI3RdVK28dntMc5gUoIJ2TKZMLf0GfrIOBYjFcPTWh7EAukti0bUQ==",
+			Encrypted2: "SEC~kv/unittest/encrypted/key1",
+			Encrypted3: "SEC~kv/unittest/encrypted/key2",
+			Encrypted4: "SEC~kv/unittest/encrypted2/key1",
+		},
+	}
+
+	result, err := confz.Decrypt(c)
+	require.NoError(t, err)
+	decrypted := result.(Test)
+
+	// check decrypted
+	require.Equal(t, "World", decrypted.Test.Hello)
+	require.Equal(t, "value1", decrypted.Test.Encrypted2)
+	require.Equal(t, "value2", decrypted.Test.Encrypted3)
+	exists, err := confz.FileExists(decrypted.Test.Encrypted4)
 	require.NoError(t, err)
 	require.True(t, exists)
-	content, err := os.ReadFile(c.Test.Encrypted4)
+	fileContent, err := os.ReadFile(decrypted.Test.Encrypted4)
 	require.NoError(t, err)
-	require.Equal(t, `value3`, string(content))
+	require.Equal(t, `value3`, string(fileContent))
+	// check original
+	require.Equal(t, "World", c.Test.Hello)
+	require.Equal(t, "ENC~b2/w1Q5OzFI3RdVK28dntMc5gUoIJ2TKZMLf0GfrIOBYjFcPTWh7EAukti0bUQ==", c.Test.Encrypted)
+	require.Equal(t, "SEC~kv/unittest/encrypted/key1", c.Test.Encrypted2)
+	require.Equal(t, "SEC~kv/unittest/encrypted/key2", c.Test.Encrypted3)
+	require.Equal(t, "SEC~kv/unittest/encrypted2/key1", c.Test.Encrypted4)
 
-	c = Test{}
-	err = conf.LoadConfigFromYamlBytes([]byte(expected), &c)
-	require.NoError(t, err)
 	err = confz.DecryptInplace(&c)
 	require.NoError(t, err)
 
+	// check inplace
 	require.Equal(t, "World", c.Test.Hello)
 	require.Equal(t, "value1", c.Test.Encrypted2)
 	require.Equal(t, "value2", c.Test.Encrypted3)
