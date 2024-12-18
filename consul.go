@@ -16,28 +16,36 @@ const (
 	EnvConsulToken = "CONSUL_TOKEN"
 )
 
-func LoadByConsul(key string, v interface{}) error {
+func LoadContentByConsul(key string) ([]byte, error) {
 	addr := os.Getenv(EnvConsulAddr)
 	token := os.Getenv(EnvConsulToken)
 	if addr == "" || token == "" {
-		return fmt.Errorf("consul addr or token is not set")
+		return nil, fmt.Errorf("consul addr or token is not set")
 	}
 	client, err := capi.NewClient(&capi.Config{
 		Address: addr,
 		Token:   token,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	kv := client.KV()
 	pair, _, err := kv.Get(key, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if pair == nil {
-		return fmt.Errorf("consul key %s not found", key)
+		return nil, fmt.Errorf("consul key %s not found", key)
 	}
-	return conf.LoadConfigFromYamlBytes(pair.Value, v)
+	return pair.Value, nil
+}
+
+func LoadByConsul(key string, v interface{}) error {
+	content, err := LoadContentByConsul(key)
+	if err != nil {
+		return err
+	}
+	return conf.LoadConfigFromYamlBytes(content, v)
 }
 
 func Load[T any](path string, opts ...conf.Option) (T, error) {
