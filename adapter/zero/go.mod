@@ -3,7 +3,7 @@ module github.com/WqyJh/consul-vault-conf/adapter/zero
 go 1.22.5
 
 require (
-	github.com/WqyJh/consul-vault-conf v0.5.1
+	github.com/WqyJh/consul-vault-conf v0.6.0
 	github.com/asim/go-micro/v3 v3.7.1
 	github.com/hashicorp/consul/api v1.30.0
 	github.com/hashicorp/vault-client-go v0.4.3

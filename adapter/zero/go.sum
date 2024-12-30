@@ -63,8 +63,8 @@ github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWX
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/WqyJh/confcrypt v0.2.1 h1:8a36LGS+vjs/gzsrLGIrph615bXP4zuHpxROoA6+/so=
 github.com/WqyJh/confcrypt v0.2.1/go.mod h1:f6DFx0FNr/TDAeTtSrtwQ85d++pLm+9QqBgfRFdLfQo=
-github.com/WqyJh/consul-vault-conf v0.5.1 h1:skyBJz6NRFOAFRthLqPxxJN+KWsMJTnLHKmoKjeNm0Y=
-github.com/WqyJh/consul-vault-conf v0.5.1/go.mod h1:Sy81DEDMYzup0996BtvI1QgWQPkS5qwoQE5NG49bFqw=
+github.com/WqyJh/consul-vault-conf v0.6.0 h1:G++R/r/FENUfGa8K367NnGatmoZIF93nuLqqlUFMVAY=
+github.com/WqyJh/consul-vault-conf v0.6.0/go.mod h1:Sy81DEDMYzup0996BtvI1QgWQPkS5qwoQE5NG49bFqw=
 github.com/WqyJh/vault-client-go v0.4.3-1 h1:IZpwalf+Nm8LKMEyYuIJ2P97+dQxX/Lu2aeR397nzNU=
 github.com/WqyJh/vault-client-go v0.4.3-1/go.mod h1:6H93aOOe5SKzd+dlCGvfTHzQYmBJIKhVChd1oB3p2Hw=
 github.com/acomagu/bufpipe v1.0.3/go.mod h1:mxdxdup/WdsKVreO5GpW4+M/1CE2sMG4jeGJ2sYmHc4=

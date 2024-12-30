@@ -2,6 +2,7 @@ package confz
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 )
@@ -115,14 +116,14 @@ func (d *vaultDecoder) recursive(dst, src reflect.Value) {
 		if strings.HasPrefix(str, "SEC~") {
 			value, err := d.secretFetcher.Fetch(d.ctx, str[4:])
 			if err != nil {
-				d.err = err
+				d.err = fmt.Errorf("error fetch secret: %w", err)
 				return
 			}
 			dst.SetString(value)
 		} else if strings.HasPrefix(str, "ENC~") {
 			value, err := d.encDecoder.Fetch(d.ctx, str[4:])
 			if err != nil {
-				d.err = err
+				d.err = fmt.Errorf("error decode secret: %w", err)
 				return
 			}
 			dst.SetString(value)
