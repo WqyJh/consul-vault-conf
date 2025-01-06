@@ -28,9 +28,10 @@ func Load[T any](f string, opts ...conf.Option) (T, error) {
 	}
 	if exists {
 		err := conf.Load(f, &v, opts...)
-		if err == nil {
-			return v, nil
+		if err != nil {
+			return v, err
 		}
+		return v, nil
 	}
 	content, err := confz.ConsulGet(f)
 	if err != nil {
