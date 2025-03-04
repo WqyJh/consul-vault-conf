@@ -28,6 +28,11 @@ Test:
   Encrypted2: SEC~kv/unittest/encrypted/key1
   Encrypted3: SEC~kv/unittest/encrypted/key2
   Encrypted4: SEC~kv/unittest/encrypted2/key1`
+	expected2 := `
+Test:
+  Key: CON~kv/unittest/config.yaml
+  Plain: Hello World
+`
 	consulServer, err := test.SetupConsulServer(ctx, test.ConsulConfig{
 		AclPolicies: []*capi.ACLPolicy{
 			{
@@ -51,6 +56,10 @@ Test:
 			{
 				Key:   "unittest/config.yaml",
 				Value: []byte(expected),
+			},
+			{
+				Key:   "unittest/config2.yaml",
+				Value: []byte(expected2),
 			},
 		},
 	})
@@ -165,4 +174,24 @@ Test:
 	content, err = os.ReadFile(c.Test.Encrypted4)
 	require.NoError(t, err)
 	require.Equal(t, `value3`, string(content))
+
+	content, err = confz.ConsulGet("unittest/config2.yaml")
+	require.NoError(t, err)
+	require.Equal(t, expected2, string(content))
+
+	type Test2 struct {
+		Key   string
+		Plain string
+	}
+
+	c2 := Test2{
+		Key:   "CON~kv/unittest/config.yaml",
+		Plain: "Hello World",
+	}
+
+	result, err = confz.Decrypt(c2)
+	require.NoError(t, err)
+	decrypted2 := result.(Test2)
+	require.Equal(t, "Hello World", decrypted2.Plain)
+	require.Equal(t, expected, decrypted2.Key)
 }

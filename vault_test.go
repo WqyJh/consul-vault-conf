@@ -100,9 +100,10 @@ func TestVault(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	configFetcher := confz.NewLazyVaultSecretFetcher()
 	vaultSecretFetcher := confz.NewVaultSecretFetcher(vaultClient)
 	encDecoder := confz.NewDefaultEncDecoder()
-	decoded, err := confz.Decode(&c, vaultSecretFetcher, encDecoder)
+	decoded, err := confz.Decode(&c, configFetcher, vaultSecretFetcher, encDecoder)
 	require.NoError(t, err)
 	decodedConf := decoded.(*Conf)
 

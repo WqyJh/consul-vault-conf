@@ -15,14 +15,16 @@ type VaultConf struct {
 type vaultDecoder struct {
 	ctx           context.Context
 	err           error
-	secretFetcher SecretFetcher
-	encDecoder    SecretFetcher
+	configFetcher ConfigFetcher
+	secretFetcher ConfigFetcher
+	encDecoder    ConfigFetcher
 }
 
 // Decode decrypts the encrypted string fields start with `ENC~` in fields tree of obj and returns the decrypted obj.
-func Decode(obj any, secretFetcher SecretFetcher, encDecoder SecretFetcher) (any, error) {
+func Decode(obj any, configFetcher ConfigFetcher, secretFetcher ConfigFetcher, encDecoder ConfigFetcher) (any, error) {
 	d := vaultDecoder{
 		ctx:           context.Background(),
+		configFetcher: configFetcher,
 		secretFetcher: secretFetcher,
 		encDecoder:    encDecoder,
 	}
@@ -124,6 +126,13 @@ func (d *vaultDecoder) recursive(dst, src reflect.Value) {
 			value, err := d.encDecoder.Fetch(d.ctx, str[4:])
 			if err != nil {
 				d.err = fmt.Errorf("error decode secret: %w", err)
+				return
+			}
+			dst.SetString(value)
+		} else if strings.HasPrefix(str, "CON~") {
+			value, err := d.configFetcher.Fetch(d.ctx, str[4:])
+			if err != nil {
+				d.err = fmt.Errorf("error fetch config: %w", err)
 				return
 			}
 			dst.SetString(value)

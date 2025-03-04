@@ -4,6 +4,6 @@ import (
 	"context"
 )
 
-type SecretFetcher interface {
+type ConfigFetcher interface {
 	Fetch(ctx context.Context, key string) (string, error)
 }
